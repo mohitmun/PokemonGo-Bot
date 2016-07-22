@@ -32,8 +32,11 @@ class PokemonGoBot(object):
         if 'catchable_pokemons' in cell:
             print '[#] Something rustles nearby!'
             for pokemon in cell['catchable_pokemons']:
-                worker = PokemonCatchWorker(pokemon, self)
-                worker.work()
+                if pokemon['pokemon_id'] in []:
+                    os.system("notify-send Not catching: %s" % pokemon['pokemon_id'])
+                else:
+                    worker = PokemonCatchWorker(pokemon, self)
+                    worker.work()
         if 'wild_pokemons' in cell:
             for pokemon in cell['wild_pokemons']:
                 worker = PokemonCatchWorker(pokemon, self)

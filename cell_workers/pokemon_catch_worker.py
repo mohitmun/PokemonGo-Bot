@@ -1,4 +1,5 @@
 import time
+import os
 from sets import Set
 
 class PokemonCatchWorker(object):
@@ -71,7 +72,9 @@ class PokemonCatchWorker(object):
                                     print('[x] Oh no! ' + str(pokemon_name) + ' vanished! :(')
                                 if status is 1:
                                     if cp < self.config.cp:
-                                        print('[x] Captured ' + str(pokemon_name) + '! [CP' + str(cp) + '] - exchanging for candy')
+                                        ab = '[x] Captured ' + str(pokemon_name) + '! [CP' + str(cp) + '] - exchanging for candy'
+                                        print(ab)
+                                        self.ubuntu_notify(ab)
                                         self._transfer_low_cp_pokemon(self.config.cp)
                                         try:
                                             id_list2 = self.count_pokemon_inventory()
@@ -80,9 +83,14 @@ class PokemonCatchWorker(object):
                                             break
                                         self.transfer_pokemon(list(Set(id_list2) - Set(id_list1))[0])
                                     else:
-                                        print('[x] Captured ' + str(pokemon_name) + '! [CP' + str(cp) + ']')
+                                        abc = '[x] Captured ' + str(pokemon_name) + '! [CP' + str(cp) + ']'
+                                        print(abc)
+                                        self.ubuntu_notify(abc)
                             break
         time.sleep(5)
+
+    def ubuntu_notify(self, view):
+        os.system("notify-send '%s'" % view)
 
     def _transfer_low_cp_pokemon(self, value):
     	self.api.get_inventory()
