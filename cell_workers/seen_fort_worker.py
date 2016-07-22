@@ -12,16 +12,16 @@ class SeenFortWorker(object):
         self.config = bot.config
         self.item_list = bot.item_list
         self.rest_time = 50
-    def walking_hook(own):
-        print('another walking_hook')
+    def walking_hook(own,i):
+        print '\ranother walking_hook ',i, 
     def work(self):
         lat = self.fort['latitude']
         lng = self.fort['longitude']
         fortID = self.fort['id']
-        distance = distance(self.position[0], self.position[1], lat, lng)
+        dist = distance(self.position[0], self.position[1], lat, lng)
 
-        print('Found fort {} at distance {}m'.format(fortID, distance))
-        if distance > 10:
+        print('Found fort {} at distance {}m'.format(fortID, dist))
+        if dist > 10:
             print('Need to move closer to Pokestop')
             position = (lat, lng, 0.0)
             if self.config.walk > 0:

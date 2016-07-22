@@ -1,6 +1,7 @@
 import time
 import os
 from sets import Set
+from pgoapi.utilities import f2i, h2f, distance
 
 class PokemonCatchWorker(object):
 
@@ -12,12 +13,29 @@ class PokemonCatchWorker(object):
         self.pokemon_list = bot.pokemon_list
         self.item_list = bot.item_list
         self.inventory = bot.inventory
-
+        self.ballstock = bot.ballstock
+        self.noballs = bot.noballs
     def work(self):
         encounter_id = self.pokemon['encounter_id']
         spawnpoint_id = self.pokemon['spawnpoint_id']
         player_latitude = self.pokemon['latitude']
         player_longitude = self.pokemon['longitude']
+
+        dist = distance(self.position[0], self.position[1], player_latitude, player_longitude)
+
+        print('[x] Found pokemon at distance {}m'.format(dist))
+        if dist > 10:
+            position = (player_latitude, player_longitude, 0.0)
+            if self.config.walk > 0:
+                self.api.walk(self.config.walk, *position,walking_hook=None)
+                print('[x] Walked to Pokemon')
+            else:
+                self.api.set_position(*position)
+                print('[x] Teleported to Pokemon')
+            self.api.player_update(latitude=player_latitude,longitude=player_longitude)
+            response_dict = self.api.call()
+            time.sleep(1.2)
+
         self.api.encounter(encounter_id=encounter_id,spawnpoint_id=spawnpoint_id,player_latitude=player_latitude,player_longitude=player_longitude)
         response_dict = self.api.call()
 
@@ -35,20 +53,33 @@ class PokemonCatchWorker(object):
                                 print('[#] A Wild ' + str(pokemon_name) + ' appeared! [CP' + str(cp) + ']')
                         while(True):
                             id_list1 = self.count_pokemon_inventory()
-                            pokeball = 0
-                            for i in range(3):
-                                for item in self.inventory:
-                                    if item['item'] is not i:
-                                        continue
-                                    if item['count'] is 0:
-                                        continue
-                                    pokeball = i
-                                    item['count'] -= 1
-                                    break
+                            
+                            if self.ballstock[1] > 0:
+                                #DEBUG - Hide
+                                #print 'use Poke Ball'
+                                pokeball = 1
+                            else:
+                                #DEBUG - Hide
+                                #print 'no Poke Ball'
+                                pokeball = 0
+                                
+                            if cp > 200 and self.ballstock[2] > 0:
+                                #DEBUG - Hide
+                                #print 'use Great Ball'
+                                pokeball = 2
+                                
+                            if cp > 400 and self.ballstock[3] > 0:
+                                #DEBUG - Hide
+                                #print 'use Utra Ball'
+                                pokeball = 3
+
                             if pokeball is 0:
                                 print('[x] Out of pokeballs...')
                                 # TODO: Begin searching for pokestops.
+                                print('[x] Farming pokeballs...')
+                                self.noballs = True
                                 break
+                            
                             print('[x] Using ' + self.item_list[str(pokeball)] + '...')
                             self.api.catch_pokemon(encounter_id = encounter_id,
                                 pokeball = pokeball,
@@ -58,6 +89,10 @@ class PokemonCatchWorker(object):
                                 spin_modifier = 1,
                                 NormalizedHitPosition = 1)
                             response_dict = self.api.call()
+
+                            #DEBUG - Hide
+                            #print ('used ' + self.item_list[str(pokeball)] + '> [-1]')
+                            self.ballstock[pokeball] -= 1 
 
                             if response_dict and \
                                 'responses' in response_dict and \
@@ -75,13 +110,13 @@ class PokemonCatchWorker(object):
                                         ab = '[x] Captured ' + str(pokemon_name) + '! [CP' + str(cp) + '] - exchanging for candy'
                                         print(ab)
                                         self.ubuntu_notify(ab)
-                                        self._transfer_low_cp_pokemon(self.config.cp)
+                                        id_list2 = self.count_pokemon_inventory()
                                         try:
-                                            id_list2 = self.count_pokemon_inventory()
+                                            # Transfering Pokemon
+                                            self.transfer_pokemon(list(Set(id_list2) - Set(id_list1))[0])
                                         except:
                                             print('[###] Your inventory is full! Please manually delete some items.')
                                             break
-                                        self.transfer_pokemon(list(Set(id_list2) - Set(id_list1))[0])
                                     else:
                                         abc = '[x] Captured ' + str(pokemon_name) + '! [CP' + str(cp) + ']'
                                         print(abc)
@@ -113,12 +148,12 @@ class PokemonCatchWorker(object):
     	if 'cp' in pokemon and pokemon['cp'] < value:
     		self.api.release_pokemon(pokemon_id=pokemon['id'])
     		response_dict = self.api.call()
-    		print('[x] Exchanged successfuly!')
+    		print('[x] Exchanged successfully!')
 
     def transfer_pokemon(self, pid):
         self.api.release_pokemon(pokemon_id=pid)
         response_dict = self.api.call()
-        print('[x] Exchanged successfuly!')
+        print('[x] Exchanged successfully!')
 
     def count_pokemon_inventory(self):
         self.api.get_inventory()
